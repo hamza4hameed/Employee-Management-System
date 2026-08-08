@@ -1,4 +1,5 @@
 from typing import Dict, Any, List, Optional
+import os
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
@@ -333,15 +334,9 @@ class EmployeeView(QWidget):
                 msg = "An employee with this Employee Code already exists."
             QMessageBox.critical(self, "Could Not Update Employee", msg, QMessageBox.Ok)
             return
-        if not ok:
-            QMessageBox.warning(
-                self,
-                "Not Updated",
-                "The employee was not updated. It may have been deleted already.",
-                QMessageBox.Ok,
-            )
         self.refresh()
-        self._scroll_to_id(emp_id)
+        if ok:
+            self._scroll_to_id(emp_id)
 
     def _on_delete_clicked(self, emp: Dict[str, Any]) -> None:
         emp_id = emp.get("id")
@@ -363,13 +358,6 @@ class EmployeeView(QWidget):
         except Exception as exc:
             QMessageBox.critical(self, "Could Not Delete Employee", str(exc), QMessageBox.Ok)
             return
-        if not ok:
-            QMessageBox.information(
-                self,
-                "Not Deleted",
-                "The employee was not deleted. It may have been removed already.",
-                QMessageBox.Ok,
-            )
         self.refresh()
 
     # ------------------------------------------------------------------
@@ -391,16 +379,6 @@ class EmployeeView(QWidget):
     # ------------------------------------------------------------------
     def _on_export_csv(self) -> None:
         rows = list(self._current_rows)
-        if not rows:
-            confirm = QMessageBox.question(
-                self,
-                "Empty Table",
-                "There are no rows currently visible. Export an empty CSV anyway?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if confirm != QMessageBox.Yes:
-                return
 
         default_name = "employees.csv"
         path, _ = QFileDialog.getSaveFileName(
@@ -424,15 +402,10 @@ class EmployeeView(QWidget):
                 QMessageBox.Ok,
             )
             return
-
-        QMessageBox.information(
-            self,
-            "Export Complete",
-            "Successfully exported {} row{} to:\n{}".format(
-                written, "" if written == 1 else "s", path
-            ),
-            QMessageBox.Ok,
-        )
+        self.statusBar().showMessage(
+            "Exported {} row{} to {}".format(written, "" if written == 1 else "s", os.path.basename(path)),
+            4000,
+        ) if hasattr(self, "statusBar") and callable(self.statusBar) else None
 
     def _on_import_csv(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -470,21 +443,23 @@ class EmployeeView(QWidget):
 
         self.refresh()
 
-        summary = "Imported {} new employee{}.\nSkipped (duplicates/errors): {}.\n\nRows processed: {}.".format(
+        base = "Imported {} new employee{}. Skipped (duplicates/errors): {}.".format(
             inserted,
             "" if inserted == 1 else "s",
             skipped,
-            inserted + skipped,
         )
-        icon = QMessageBox.Information
-        title = "Import Complete"
-        if errors:
-            icon = QMessageBox.Warning
-            title = "Import Completed with Warnings"
-            err_block = "\n".join(errors[:15])
-            if len(errors) > 15:
-                err_block += "\n... and {} more issue(s).".format(len(errors) - 15)
-            summary += "\n\nDetails:\n{}".format(err_block)
+        if hasattr(self, "statusBar") and callable(self.statusBar):
+            self.statusBar().showMessage(base, 5000)
+
+        if not errors:
+            return
+
+        icon = QMessageBox.Warning
+        title = "Import Completed with Warnings"
+        err_block = "\n".join(errors[:15])
+        if len(errors) > 15:
+            err_block += "\n... and {} more issue(s).".format(len(errors) - 15)
+        summary = "{}\n\nDetails:\n{}".format(base, err_block)
 
         box = QMessageBox(icon, title, summary, QMessageBox.Ok, self)
         box.setWindowTitle(title)
