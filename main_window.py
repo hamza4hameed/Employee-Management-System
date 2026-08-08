@@ -1,5 +1,16 @@
+import os
 import sys
+import traceback
 from typing import Dict, Any, Optional
+
+# Set env var hints only. DO NOT call matplotlib.use() here — doing so before
+# QApplication is fully alive (and on the real "windows" platform) can segfault
+# on Python 3.13 + PyQt5. Matplotlib backend pinning is deferred until the
+# first real canvas build inside AnalyticsView._ensure_canvas(), at which
+# point QApplication is 100% alive and rendering to a real platform.
+os.environ.setdefault("MPLBACKEND", "Qt5Agg")
+os.environ.setdefault("QT_QPA_PLATFORM", "windows")
+os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QIcon
@@ -580,21 +591,63 @@ class MainWindow(QMainWindow):
         self._theme: str = "light"
         self._nav_group: Optional[QButtonGroup] = None
         self._page_index: Dict[str, int] = {}
+        self.employee_view: Any = None
+        self.analytics_view: Any = None
 
-        self._build_ui()
-        self._apply_theme(self._theme)
+        try:
+            self._ui_ready = False
+            print("[main_window] step 1 _build_ui() ...")
+            self._build_ui()
+            self._ui_ready = True
+            print("[main_window] step 2 _apply_theme(light) ...")
+            self._apply_theme(self._theme)
+            print("[main_window] init OK; current_user =", self.current_user.get("username"))
+        except Exception as exc:
+            tb = traceback.format_exc()
+            print("[main_window] EXCEPTION during __init__:")
+            print(tb)
+            sys.stdout.flush()
+            try:
+                from PyQt5.QtWidgets import QMessageBox
+
+                QMessageBox.critical(
+                    None,
+                    "Main Window Failed to Start",
+                    "An error occurred while building the main window.\n\n"
+                    "Error: {}\n\n{}".format(str(exc), tb),
+                )
+            except Exception:
+                pass
+            raise
 
     # ------------------------------------------------------------------
     # Theme
     # ------------------------------------------------------------------
     def _apply_theme(self, theme: str) -> None:
+        if not getattr(self, "_ui_ready", False):
+            return
+        platform = os.environ.get("QT_QPA_PLATFORM", "").strip().lower()
+        if platform in ("minimal", "offscreen"):
+            print("[main_window._apply_theme] skipping QSS apply; running on sandbox platform:", platform)
+            sys.stdout.flush()
+            self._theme = theme
+            return
         qss = THEMES.get(theme, THEMES["light"])
-        QApplication.instance().setStyleSheet(qss)
+        app = QApplication.instance()
+        if app is not None:
+            try:
+                app.setStyleSheet(qss)
+            except Exception as exc:
+                print("[main_window._apply_theme] setStyleSheet warning (non-fatal):", exc)
+                sys.stdout.flush()
         self._theme = theme
-        self.theme_toggle.setText("Dark Mode" if theme == "light" else "Light Mode")
-        if hasattr(self, "analytics_view"):
-            self.analytics_view.set_theme(theme)
-
+        if hasattr(self, "theme_toggle"):
+            self.theme_toggle.setText("Dark Mode" if theme == "light" else "Light Mode")
+        if hasattr(self, "analytics_view") and self.analytics_view is not None:
+            try:
+                self.analytics_view.set_theme(theme)
+            except Exception:
+                pass
     def _toggle_theme(self) -> None:
         self._apply_theme("dark" if self._theme == "light" else "light")
 
@@ -602,6 +655,8 @@ class MainWindow(QMainWindow):
     # UI Construction
     # ------------------------------------------------------------------
     def _build_ui(self) -> None:
+        print("[main_window._build_ui] 1/5 setWindowTitle / resize / rootWidget ...")
+        sys.stdout.flush()
         self.setWindowTitle("Employee Management System")
         self.resize(1180, 760)
         self.setMinimumSize(QSize(980, 620))
@@ -614,9 +669,15 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
+        print("[main_window._build_ui] 2/5 _build_sidebar() ...")
+        sys.stdout.flush()
         root_layout.addWidget(self._build_sidebar(), 0)
+        print("[main_window._build_ui] 3/5 _build_content_area() ...")
+        sys.stdout.flush()
         root_layout.addWidget(self._build_content_area(), 1)
 
+        print("[main_window._build_ui] 4/5 statusBar() ...")
+        sys.stdout.flush()
         status = self.statusBar()
         status.showMessage(
             "Logged in as {} · Role: {}".format(
@@ -624,6 +685,9 @@ class MainWindow(QMainWindow):
                 self.current_user.get("role", "user"),
             )
         )
+        print("[main_window._build_ui] 5/5 done; navigating to dashboard ...")
+        sys.stdout.flush()
+        self._navigate_to("dashboard")
 
     def _build_sidebar(self) -> QFrame:
         sidebar = QFrame()
@@ -758,8 +822,14 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.stack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        print("[main_window._build_page_stack] construct EmployeeView() ...")
+        sys.stdout.flush()
         self.employee_view = EmployeeView()
+        print("[main_window._build_page_stack] construct AnalyticsView() ...")
+        sys.stdout.flush()
         self.analytics_view = AnalyticsView()
+        print("[main_window._build_page_stack] AnalyticsView.__init__ finished safely.")
+        sys.stdout.flush()
 
         pages = [
             ("dashboard", _placeholder_page(
@@ -829,20 +899,132 @@ class MainWindow(QMainWindow):
             self.close()
 
 
+def _force_foreground_on_windows(hwnd_ptr) -> None:
+    """Best-effort Win32 SetForegroundWindow via ctypes.
+
+    PyQt5's raise_() / activateWindow() silently fail if the calling thread
+    doesn't own the foreground window (which is almost always the case when
+    you launch the app from inside PowerShell or an IDE). This fallback uses
+    the Win32 API directly to force the window into Z-order foreground.
+
+    Args:
+        hwnd_ptr: result of QWidget.winId() (int/void*). Passing None/0 is a no-op.
+    """
+    if sys.platform != "win32":
+        return
+    if not hwnd_ptr:
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        user32.AllowSetForegroundWindow(-1)  # ASFW_ANY = -1: allow any process
+        AttachThreadInput = user32.AttachThreadInput
+        AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.BOOL]
+        AttachThreadInput.restype = wintypes.BOOL
+
+        foreground_hwnd = user32.GetForegroundWindow()
+        current_tid = user32.GetCurrentThreadId()
+        fg_tid = user32.GetWindowThreadProcessId(foreground_hwnd, None)
+        if fg_tid and fg_tid != current_tid:
+            AttachThreadInput(current_tid, fg_tid, True)
+        SetForegroundWindow = user32.SetForegroundWindow
+        SetForegroundWindow.argtypes = [wintypes.HWND]
+        SetForegroundWindow.restype = wintypes.BOOL
+        BringWindowToTop = user32.BringWindowToTop
+        BringWindowToTop.argtypes = [wintypes.HWND]
+        BringWindowToTop.restype = wintypes.BOOL
+        ShowWindow = user32.ShowWindow
+        ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+        ShowWindow.restype = wintypes.BOOL
+        SW_SHOW = 5
+        SW_RESTORE = 9
+
+        hwnd = int(hwnd_ptr)
+        ShowWindow(hwnd, SW_RESTORE)
+        ShowWindow(hwnd, SW_SHOW)
+        BringWindowToTop(hwnd)
+        SetForegroundWindow(hwnd)
+        if fg_tid and fg_tid != current_tid:
+            AttachThreadInput(current_tid, fg_tid, False)
+    except Exception:
+        # Foreground push is a best-effort UX nicety; never fail startup over it.
+        return
+
+
+def _display_and_confirm_main_window(window: QMainWindow) -> None:
+    """Show `window`, force it to foreground, then show a always-visible
+    confirmation QMessageBox so the user cannot miss that startup succeeded.
+
+    This handles the common "login dialog disappears and nothing appears"
+    complaint: either the MainWindow is actually visible on screen, OR the
+    user sees a QMessageBox.information() in front of them (modal, always
+    topmost-active for the Qt event loop) saying the window is there.
+    """
+    window.show()
+    window.showNormal()
+    window.raise_()
+    window.activateWindow()
+    try:
+        wid = window.windowHandle()
+        if wid is not None:
+            wid.requestActivate()
+    except Exception:
+        pass
+    try:
+        _force_foreground_on_windows(window.winId())
+    except Exception:
+        pass
+    try:
+        from PyQt5.QtCore import QTimer
+        user = window.current_user or {}
+        msg = QMessageBox(window)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("Employee Management System Ready")
+        msg.setText(
+            "Welcome, {}!\n\n"
+            "The Employee Management System dashboard is now open and should "
+            "be visible on your screen.\n\n"
+            "If you do NOT see the dashboard window behind this message, "
+            "check your taskbar, press Alt+Tab, or minimize the IDE/terminal "
+            "you launched from -- the window exists but was hidden by Windows "
+            "Z-ordering.".format(user.get("username", "Guest"))
+        )
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setModal(False)
+        QTimer.singleShot(1500, msg.show)
+    except Exception:
+        pass
+
+
 def main() -> int:
-    app = QApplication(sys.argv)
+    app = QApplication.instance() or QApplication(sys.argv)
     app.setFont(QFont("Segoe UI", 10))
 
-    database.init_db()
-    database.insert_default_admin()
+    try:
+        database.init_db()
+        database.insert_default_admin()
+    except Exception as _exc:
+        QMessageBox.critical(
+            None,
+            "Database Error",
+            "Could not initialize the database:\n{}".format(str(_exc)),
+        )
+        raise
 
     login = LoginDialog()
-    if login.exec_() != LoginDialog.Accepted or not login.current_user:
-        QMessageBox.information(None, "Cancelled", "Login cancelled. Exiting.", QMessageBox.Ok)
+    login_result = login.exec_()
+    if login_result != LoginDialog.Accepted or not login.current_user:
+        QMessageBox.information(
+            None,
+            "Login Cancelled",
+            "Login was cancelled or credentials were not provided.\nApplication will exit.",
+        )
         return 0
 
     window = MainWindow(user=login.current_user)
-    window.show()
+    _display_and_confirm_main_window(window)
     return app.exec_()
 
 

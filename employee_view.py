@@ -42,9 +42,11 @@ class EmployeeView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._current_rows: List[Dict[str, Any]] = []
+        self._initialized = False
+        self._current_rows = []
         self._build_ui()
         self.refresh()
+        self._initialized = True
 
     # ------------------------------------------------------------------
     # UI Construction
@@ -199,7 +201,8 @@ class EmployeeView(QWidget):
     def refresh(self) -> None:
         self._populate_dept_combo()
         self._apply_filters()
-        self.data_changed.emit()
+        if getattr(self, "_initialized", True):
+            self.data_changed.emit()
 
     def _on_filter_changed(self) -> None:
         self._apply_filters()
@@ -483,7 +486,6 @@ class EmployeeView(QWidget):
                 err_block += "\n... and {} more issue(s).".format(len(errors) - 15)
             summary += "\n\nDetails:\n{}".format(err_block)
 
-        QMessageBox.icon = icon  # noqa
         box = QMessageBox(icon, title, summary, QMessageBox.Ok, self)
         box.setWindowTitle(title)
         box.setText(summary)
