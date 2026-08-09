@@ -174,4 +174,4 @@ This project is provided under the MIT License — replace if you prefer a diffe
 
 - Maintainer: Hamza Hameed — https://github.com/hamza4hameed
 - Repo: https://github.com/hamza4hameed/Employee-Management-System
-- Email: your.email@example.com (replace with preferred contact)
+- Email: hamza4hameed@gmail.com 
