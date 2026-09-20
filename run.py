@@ -21,11 +21,14 @@ import traceback
 from datetime import datetime
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+_APP_ROOT = _HERE
 os.chdir(_HERE)
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
-LOG_PATH = os.path.join(_HERE, "startup_error.log")
+from app_paths import get_log_dir
+
+LOG_PATH = os.path.join(get_log_dir(), "app.log")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,12 +46,6 @@ def _step(n: int, text: str) -> None:
 
 def _find_qt_plugin_path() -> str:
     """Auto-locate the PyQt5 plugins folder that contains platforms/qwindows.dll.
-
-    On many pip-installed PyQt5 setups on Windows, qwindows.dll exists on disk
-    but Qt cannot find it because QT_PLUGIN_PATH is not exported and Qt's
-    compiled-in default path points at the wrong folder. The symptom is:
-    QApplication creates OK, but QMainWindow.show() silently returns with no
-    window visible and the event loop spins forever doing nothing.
 
     Returns the plugin path (including \\platforms parent) if found, else "".
     """
@@ -112,6 +109,12 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
+try:
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+except Exception:
+    pass
+
 _app = QApplication.instance() or QApplication(sys.argv)
 _app.setFont(QFont("Segoe UI", 10))
 _step(2, "  QApplication created. platformName = {}".format(
@@ -160,8 +163,8 @@ _step(3, "Initializing database + default admin account ...")
 import database
 database.init_db()
 database.insert_default_admin()
-_admin_ok = bool(database.verify_login("admin", "admin123"))
-_step(3, "  DB init OK. admin/admin123 verify_login = {}".format(
+_admin_ok = bool(database.get_user_by_username("admin"))
+_step(3, "  DB init OK. admin account verified = {}".format(
     "OK" if _admin_ok else "FAILED"
 ))
 
@@ -176,6 +179,8 @@ import analytics_view
 _step(5, "  Analytics view module imported (NO canvas built yet; user opts in later).")
 
 _step(6, "Importing main_window ...")
+import app_meta
+_step(6, f"  App: {app_meta.APP_NAME} v{app_meta.APP_VERSION}")
 import main_window
 _step(6, "  main_window module imported.")
 
@@ -184,72 +189,60 @@ _step(6, "  main_window module imported.")
 # 4. Launch LoginDialog first, then MainWindow on successful auth
 # ---------------------------------------------------------------------------
 def _launch() -> int:
-    _step(7, "Showing LoginDialog (modal) ... default creds: admin / admin123")
-    from login import LoginDialog
+    from login import LoginDialog, FirstRunPasswordDialog
 
-    login = LoginDialog()
-    result = login.exec_()
-    if result != LoginDialog.Accepted or not login.current_user:
-        QMessageBox.information(
-            None,
-            "Login Cancelled",
-            "Login was cancelled or credentials were not provided.\n"
-            "Application will exit.\n\n"
-            "Default account:\n  username: admin\n  password: admin123",
-        )
-        _step(7, "  Login cancelled by user. Exiting cleanly.")
-        return 0
-    _step(7, "  Login accepted. username={}, role={}".format(
-        login.current_user.get("username"), login.current_user.get("role"),
-    ))
-
-    _step(8, "Constructing MainWindow(user=...) ...")
-    win = main_window.MainWindow(user=login.current_user)
-    _step(8, "  MainWindow.__init__ returned. Geometry={}".format(win.geometry().getRect()))
-
-    _step(9, "Displaying MainWindow + forcing foreground ...")
-    try:
-        main_window._display_and_confirm_main_window(win)
-    except Exception as _show_err:
-        # Even if the custom ctypes foreground push crashes for some reason,
-        # we still have to show the window via Qt's default calls.
-        print("[run.py] _display_and_confirm raised non-fatal:", _show_err)
-        sys.stdout.flush()
-        win.show()
-        win.raise_()
-        win.activateWindow()
-
-    # Synchronous MODAL confirmation message box BEFORE starting the main
-    # event loop. Qt's exec_() message boxes always use their own nested
-    # event loop and ALWAYS become visible on the active desktop (unlike
-    # non-modal + QTimer boxes). If the user sees THIS box, MainWindow is
-    # definitely alive.
-    try:
-        user = win.current_user or {}
-        _welcome = QMessageBox()
-        _welcome.setIcon(QMessageBox.Information)
-        _welcome.setWindowTitle("Employee Management System - Ready")
-        _welcome.setText(
-            "Welcome, {}!\n\n"
-            "✓ Login successful\n"
-            "✓ Main window created and shown\n"
-            "✓ All modules loaded without errors\n\n"
-            "Click OK to start using the application.\n\n"
-            "If the main dashboard window is NOT visible behind this dialog,\n"
-            "press Alt+Tab or minimize the IDE/terminal window you launched from.".format(
-                user.get("username", "Guest")
+    # Check if first-run password setup is required
+    if database.admin_requires_password_setup():
+        _step(7, "First-run setup: Administrator password required.")
+        setup_dlg = FirstRunPasswordDialog()
+        result = setup_dlg.exec_()
+        if result != setup_dlg.Accepted or not setup_dlg.password_set():
+            _step(7, "  First-run setup cancelled. Exiting.")
+            QMessageBox.information(
+                None,
+                "Setup Required",
+                "You must create an administrator password to use this application.\n\n"
+                "The application will now exit.",
+                QMessageBox.Ok,
             )
-        )
-        _welcome.setStandardButtons(QMessageBox.Ok)
-        _welcome.setModal(True)
-        _step(9, "  Showing synchronous confirmation messagebox ...")
-        _welcome.exec_()
-    except Exception as _wb_err:
-        print("[run.py] Welcome message box failed (non-fatal):", _wb_err)
-        sys.stdout.flush()
+            return 1
+        _step(7, "  Administrator password created successfully.")
 
-    _step(9, "  Entering main QApplication event loop (_app.exec_()) ...")
-    return _app.exec_()
+    while True:
+        _step(7, "Showing LoginDialog (modal) ...")
+        login = LoginDialog()
+        result = login.exec_()
+        if result != LoginDialog.Accepted or not login.current_user:
+            _step(7, "  Login cancelled by user. Exiting cleanly.")
+            return 0
+        _step(7, "  Login accepted. username={}, role={}".format(
+            login.current_user.get("username"), login.current_user.get("role"),
+        ))
+
+        _step(8, "Constructing MainWindow(user=...) ...")
+        win = main_window.MainWindow(user=login.current_user)
+        _step(8, "  MainWindow.__init__ returned. Geometry={}".format(win.geometry().getRect()))
+
+        _step(9, "Displaying MainWindow + forcing foreground ...")
+        try:
+            main_window._display_and_confirm_main_window(win)
+        except Exception as _show_err:
+            # Even if the custom ctypes foreground push crashes for some reason,
+            # we still have to show the window via Qt's default calls.
+            print("[run.py] _display_and_confirm raised non-fatal:", _show_err)
+            sys.stdout.flush()
+            win.show()
+            win.raise_()
+            win.activateWindow()
+
+        _step(9, "  Entering main QApplication event loop (_app.exec_()) ...")
+        _app.exec_()
+
+        if not getattr(win, "is_logged_out", False):
+            break
+        _step(7, "  User logged out. Returning to LoginDialog ...")
+
+    return 0
 
 
 if __name__ == "__main__":

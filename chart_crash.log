@@ -1,5 +1,0 @@
-Windows fatal exception: access violation
-
-Current thread 0x000035b4 (most recent call first):
-  File "C:\Users\hamza_gooi7rr\OneDrive\Desktop\Employee Management System\analytics_view.py", line 301 in _on_refresh_charts_clicked
-  File "<string>", line 46 in <module>

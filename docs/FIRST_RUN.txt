@@ -1,0 +1,168 @@
+FIRST-RUN INSTRUCTIONS
+======================
+Employee Management System v1.0.0
+
+
+0. BEFORE YOU START
+===================
+
+  · You only need to complete these steps ONCE per Windows user account.
+  · All data is stored locally on YOUR computer.  Nothing leaves your
+    machine — there is no cloud, no telemetry, no phone-home.
+  · If you skipped Installation steps, see INSTALLATION.txt first.
+
+
+1. LAUNCH THE APPLICATION
+=========================
+
+  Run:  python run.py
+
+  FIRST-LAUNCH BEHAVIOUR — the application will silently create these
+  folders for storing your data:
+
+    %LOCALAPPDATA%\EmployeeManagementSystem\
+    ├── data\
+    │   └── employee_system.db   ← SQLite database (created empty, first run)
+    ├── logs\
+    │   └── app.log              ← rolling diagnostic log
+    └── backups\                 ← (initially empty)
+
+  If this is not what you want (e.g. you need data on a USB drive or
+  a network share), see the PORTABLE MODE section at the end of this file
+  BEFORE creating any employees.
+
+
+2. CREATE THE ADMINISTRATOR PASSWORD
+====================================
+
+  Because this is a brand-new installation, the application immediately
+  shows the  "Set Administrator Password"  dialog:
+
+        ┌───────────────────────────────────────────┐
+        │    Set Administrator Password             │
+        ├───────────────────────────────────────────┤
+        │  This is your first time running the      │
+        │  Employee Management System.              │
+        │                                           │
+        │  New password:        [••••••••        ]  │
+        │  Confirm new password:[••••••••        ]  │
+        │                                           │
+        │           [ Cancel ]  [ Create Account ]  │
+        └───────────────────────────────────────────┘
+
+  REQUIREMENTS FOR THE ADMIN PASSWORD:
+
+    ✔ 8 characters minimum
+    ✔ Not one of the obvious defaults (password, admin123, qwerty123, …)
+    ✔ Entered identically in both fields
+
+  ⚠ IMPORTANT — WRITE THIS PASSWORD DOWN somewhere safe.  The software
+    vendor CANNOT reset or recover a lost administrator password.  If
+    you lose it you will have to wipe the database and start over.
+
+  Click "Create Account" when ready.
+
+
+3. LOG IN FOR THE FIRST TIME
+============================
+
+  The standard login dialog appears:
+
+        Username:  admin
+        Password:  <the password you just created>
+
+  Check "Remember Me on this Computer" if you want your username to be
+  pre-filled on future visits.  Your password is NEVER stored on disk;
+  only the username is remembered.
+
+  Click "Log In".
+
+
+4. TOUR THE INTERFACE
+=====================
+
+  On first login you'll see an empty dashboard.  The left sidebar has
+  four main areas:
+
+    ┌───────────────────────────────────────────┐
+    │ EMPLOYEE MANAGEMENT SYSTEM               │
+    │                                           │
+    │ ● Dashboard          ← live statistics   │
+    │   Employees          ← add/edit/remove   │
+    │   Departments        ← org structure     │
+    │   Analytics          ← charts & reports  │
+    │   Settings           ← backup / import   │
+    │                                           │
+    │   [Change Theme] [⚙ Logout]              │
+    └───────────────────────────────────────────┘
+
+  For a full walkthrough of each area see USER_GUIDE.txt.
+
+
+5. (OPTIONAL) LOAD THE SAMPLE DATA
+===================================
+
+  Want to see the system working with realistic data in under a minute?
+
+    1. From the sidebar click Settings.
+    2. Scroll to "CSV Bulk Data Operations".
+    3. Click  "Import Employees from CSV".
+    4. Browse to the folder next to App\ called  Sample Data\ .
+    5. Select  employees_sample.csv  → Open.
+
+  The system will validate all 1,000 rows and import them.  You can then
+  go to Employees to browse/search and to Analytics to render charts.
+
+  You can wipe sample data at any time from
+    Settings → Danger Zone → Delete Complete Data.
+  (Admin-only feature.)
+
+
+6. (OPTIONAL) CREATE YOUR FIRST EMPLOYEE MANUALLY
+==================================================
+
+    1. Employees → Add Employee ( + )
+    2. Fill in at least the starred fields:
+         Emp Code   : e.g. EMP-0001
+         Full Name  : e.g. Jane Doe
+         Email      : e.g. jane.doe@company.com
+         Department : pick one from the dropdown
+         Position   : e.g. Senior Software Engineer
+         Salary     : e.g. 85000
+         Hire Date  : e.g. 2024-05-20
+    3. Click "Save".
+
+  The employee now appears in the dashboard counters and in Employees.
+
+
+7. (RECOMMENDED) TAKE YOUR FIRST BACKUP
+========================================
+
+    1. Settings → Create Database Backup.
+    2. Choose a safe location (e.g. a cloud-synced folder like OneDrive,
+       or a USB stick).  The default filename includes a timestamp so
+       you can keep multiple historical backups.
+    3. Click Save.
+
+  For more on backup strategy see BACKUP_AND_RECOVERY.txt.
+
+
+PORTABLE MODE (OPTIONAL)
+========================
+
+  By default all user data lives in %LOCALAPPDATA%.  If you need the
+  app, the database, and logs to all live on the same USB drive or
+  network share (or if you simply prefer "everything in one folder"):
+
+    1. Close the application if it is running.
+    2. In the project folder, create a new script (e.g. Launch_Portable.ps1):
+
+          $env:EMS_USER_DATA_DIR = "$PSScriptRoot\UserData"
+          python run.py
+
+    3. Run the script. The app now creates:
+
+          UserData/{data,logs,backups}/
+
+  right next to App\, which means you can zip or copy the entire folder
+  between computers and take ALL of your data with you.

@@ -1,0 +1,270 @@
+TROUBLESHOOTING
+===============
+Employee Management System v1.0.0
+
+
+CONTENTS
+========
+  P1 — The application will not start
+  P2 — "Windows protected your PC" / SmartScreen warning
+  P3 — Login dialog appears but window is blank / not rendering
+  P4 — Administrator password lost
+  P5 — Icons look low-quality or appear as blurry squares
+  P6 — Charts / Analytics tab is blank or shows an error
+  P7 — CSV import says "0 rows imported" or shows many validation errors
+  P8 — CSV export opens in Excel with weird characters (encoding issues)
+  P9 — Restore from Backup fails / database is "corrupted"
+  P10 — The application freezes on startup with no error
+  P11 — "Duplicate emp_code" errors during CSV import
+  P12 — How do I send a bug report to technical support?
+
+
+P1 — THE APPLICATION WILL NOT START
+===================================
+
+Symptoms:
+  Double-clicking EmployeeMS.exe does nothing, or a console flashes
+  and disappears.
+
+Troubleshooting steps:
+  1. Make sure you extracted the zip.  Running from inside the zip
+     preview window is NOT supported.
+  2. Check that you are on Windows 10 22H2 (or newer) 64-bit.
+     Windows 7, 8, 8.1, and 32-bit Windows are NOT supported.
+  3. Right-click EmployeeMS.exe → Properties → Compatibility →
+     untick everything, especially "Run this program as an
+     administrator" and "Run in 640×480 screen resolution".
+  4. Open a CMD prompt in the App\ folder and run:
+         EmployeeMS.exe 2>&1 | more
+     — any early startup error will be printed to this console.
+  5. Inspect the application log at:
+       %LOCALAPPDATA%\EmployeeManagementSystem\logs\app.log
+     If the app cannot even write to this file, it will attempt to
+     write a startup error next to the exe as startup_crash_*.log.
+  6. If you suspect a corrupted user-data folder, rename
+       %LOCALAPPDATA%\EmployeeManagementSystem\
+     to
+       %LOCALAPPDATA%\EmployeeManagementSystem.OLD\
+     and try launching again.  This gives you a clean slate without
+     deleting your old data.
+
+
+P2 — "WINDOWS PROTECTED YOUR PC" / SMARTSCREEN WARNING
+======================================================
+
+  Windows Defender SmartScreen warns about unsigned applications
+  until they have gathered enough "reputation" (millions of installs).
+  This is normal for small / in-house software.
+
+  Resolution:
+    · Click  "More info"  (blue text in the dialog)
+    · Click  "Run anyway"  (appears as a new button).
+
+  To permanently suppress on a single PC (IT-managed environments):
+    Right-click EmployeeMS.exe → Properties → at the bottom, tick
+    "Unblock" → OK.
+
+
+P3 — LOGIN DIALOG APPEARS BUT WINDOW IS BLANK / NOT RENDERING
+==============================================================
+
+  This is almost always a PyQt5 "platforms plugin" detection issue
+  where Qt cannot locate  qwindows.dll.
+
+  Confirm the App\ folder contains at least:
+      platforms/qwindows.dll     (300–800 KB)
+
+  If it is missing, the PyInstaller build was incomplete — ask the
+  application vendor for a fresh build.
+
+  If it IS present, try launching with a batch file that pins the
+  plugin path explicitly:
+
+      run_with_explicit_plugins.cmd
+      ───────────────────────────────────────────────────────
+      @echo off
+      set QT_PLUGIN_PATH=%~dp0
+      start "" "%~dp0EmployeeMS.exe"
+      ───────────────────────────────────────────────────────
+
+  On systems with multiple GPUs (laptop + discrete), forcing the
+  integrated GPU via the NVIDIA / AMD control panel for
+  EmployeeMS.exe sometimes fixes blank rendering.
+
+
+P4 — ADMINISTRATOR PASSWORD LOST
+================================
+
+  There is no password backdoor.  Passwords are hashed with PBKDF2-
+  HMAC-SHA256 (100,000 iterations, per-user random salt) and cannot
+  be recovered.
+
+  Options:
+
+  1. Restore a backup taken when you KNEW the admin password.
+     See BACKUP_AND_RECOVERY.txt → Manual rollback.
+
+  2. Wipe the database (destroys all employee records):
+       Close the app.
+       Delete: %LOCALAPPDATA%\EmployeeManagementSystem\data\employee_system.db
+       On next launch the app will walk you through setting a NEW
+       admin password.
+
+  3. If you have DB Browser for SQLite (or similar), you can manually
+     blank the admin row so the "first-run password setup" runs again
+     without destroying employees.  Only do this if you are familiar
+     with SQLite:
+
+       DELETE FROM users WHERE username='admin';
+     — then close the database, save, and re-launch the app.
+
+
+P5 — ICONS LOOK LOW-QUALITY OR APPEAR AS BLURRY SQUARES
+=======================================================
+
+  The application ships 30+ high-resolution PNG icons from
+  App\resources\icons\.  If icons render as blurry or missing:
+
+  1. Confirm the folder  App\resources\icons\  is not empty and
+     contains files like add_employee.png, dashboard.png, ….
+     If the folder is missing, re-extract the distribution zip.
+  2. HiDPI / 4K monitors — right-click EmployeeMS.exe →
+     Properties → Compatibility → "Change high DPI settings" →
+     tick "Override high DPI scaling behavior" → Scaling performed
+     by:  Application → OK.
+
+
+P6 — CHARTS / ANALYTICS TAB IS BLANK OR SHOWS AN ERROR
+=======================================================
+
+Charts are powered by Matplotlib.  Several issues are possible:
+
+  · Click "Refresh Charts" explicitly.  Charts are NOT built on
+    first visit (this prevents a silent 0xC0000005 crash on some
+    PyQt5 + Matplotlib + Python 3.13 combos).
+  · Restart the application.  Chart rendering caches a backend
+    the first time it runs.
+  · Inspect the app log (see P11).  A missing Matplotlib back-end
+    will print lines containing  "matplotlib" or "Qt5Agg".
+  · Exotic Windows configurations (N/A ServerCore / headless) are
+    unsupported because they lack GPU-backed OpenGL for Qt.
+
+
+P7 — CSV IMPORT SAYS "0 ROWS IMPORTED" OR HAS MANY VALIDATION ERRORS
+====================================================================
+
+  Common issues:
+
+    ✗ Missing columns.  Required columns are:
+        emp_code, name, email, department, position, salary, hire_date
+      Open your CSV in Notepad++ or Excel and verify the header row
+      on line 1 contains each of these.  Spelling + case don't
+      matter (they are normalised) but the names must be recognisable.
+      Optional columns: id, status.
+
+    ✗ File saved as Excel .xlsx.  Import works on CSV only.
+        In Excel: File → Save As → CSV UTF-8 (Comma delimited) (*.csv)
+
+    ✗ Salary contains currency symbols / thousand separators.
+        Remove "$", "£", "€", and commas BEFORE import, or format
+        the column as Number in Excel and re-export.
+
+    ✗ hire_date not recognised.  Allowed formats include:
+        YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, DD Month YYYY, …
+      If the import reports an unparseable date, convert the column
+      in Excel to YYYY-MM-DD format first.
+
+    ✗ emp_code has duplicate entries in the CSV.  The importer skips
+      duplicates (by default).  The "Import completed with Warnings"
+      dialog lists each duplicate line number so you can fix them.
+
+
+P8 — CSV EXPORT SHOWS WEIRD CHARACTERS IN EXCEL (ENCODING)
+==========================================================
+
+  Exports are saved as  UTF-8 WITH BOM (utf-8-sig) so Excel 2016+
+  opens them directly with correct Unicode rendering.
+
+  If you still see mangled accented characters:
+    · Do NOT double-click the CSV in Explorer.  Instead open Excel
+      first, then  Data → From Text/CSV → pick the file.  Excel's
+      import wizard handles encodings more reliably.
+    · In the wizard set:  Origin = 65001 : Unicode (UTF-8).
+
+
+P9 — RESTORE FROM BACKUP FAILS / DATABASE IS "CORRUPTED"
+========================================================
+
+  The app runs a full SQLite integrity_check on every candidate
+  backup.  If integrity_check returns anything other than "ok", the
+  restore is refused.
+
+  Recovery steps:
+    1. Try an OLDER backup.  Backup files are timestamped so you can
+       identify one before the corruption.
+    2. Attempt SQLite-level repair on the corrupt .db file using
+       sqlite3.exe (download from sqlite.org):
+         sqlite3 corrupt.db .recover > recovered.sql
+         sqlite3 new.db < recovered.sql
+       Then restore from new.db.
+    3. If nothing else works, perform a manual rollback using the
+       pre-restore auto-snapshots kept in:
+         %LOCALAPPDATA%\EmployeeManagementSystem\backups\
+       (These snapshots are created BEFORE every Restore operation
+       so at least one is guaranteed to exist after a failed restore.)
+
+
+P10 — APPLICATION FREEZES ON STARTUP WITH NO ERROR
+==================================================
+
+  On very slow HDDs, the first launch after extraction can take
+  20–30 seconds while Windows Defender scans every DLL.  Give it at
+  least 60 seconds before assuming it hung.
+
+  If it never appears:
+    · Temporarily add EmployeeMS.exe as an exclusion in Windows
+      Security → Virus & Threat Protection → Exclusions.
+    · Some enterprise EDR/XDR tools block PyInstaller one-dir
+      apps generically.  Ask your IT team to whitelist the EXE
+      signature / install folder.
+    · Launch via run_with_explicit_plugins.cmd (P3).
+
+
+P11 — "DUPLICATE EMP_CODE" ERRORS DURING CSV IMPORT
+===================================================
+
+  Employee codes are UNIQUE.  The system refuses two employees with
+  the same code.  This is correct behaviour.
+
+  To fix:
+    1. Open the CSV in Excel / LibreOffice.
+    2. Sort by column A (emp_code).
+    3. Remove duplicates (Data → Remove Duplicates in Excel).
+    4. Re-import.  The summary dialog will tell you exactly which
+       line numbers had duplicates in the previous attempt.
+
+  If you actually meant to UPDATE existing rows, CSV import is a
+  pure "insert + skip duplicates" operation.  For updates, edit
+  each employee through the Employees screen or use a dedicated
+  migration script (developers only).
+
+
+P12 — HOW DO I SEND A BUG REPORT TO TECHNICAL SUPPORT?
+======================================================
+
+  Gather the following into a single zip and email it:
+
+    1. Screenshot of any error dialog (use Win + Shift + S).
+    2. Application log:
+         %LOCALAPPDATA%\EmployeeManagementSystem\logs\app.log
+       (Include app.log.1 / .2 / .3 too if they exist.)
+    3. Windows version: press  Win + R, type  winver, press Enter,
+       screenshot the resulting dialog.
+    4. Steps you performed just before the error — "how can an
+       engineer reproduce this on their own machine?"
+    5. If the issue relates to a CSV import/export: attach the CSV
+       (redact salaries / emails if they are sensitive but leave
+       enough structure to reproduce).
+
+  DO NOT include your employee_system.db file unless explicitly
+  requested — it contains PII.

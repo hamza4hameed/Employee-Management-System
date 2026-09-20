@@ -1,0 +1,224 @@
+BASIC USER GUIDE
+================
+Employee Management System v1.0.0
+
+
+CONTENTS
+========
+
+  1. Roles & Users
+  2. Dashboard
+  3. Employees
+  4. Departments
+  5. Analytics
+  6. Settings (Backup / CSV / User Account / Danger Zone)
+  7. Changing Your Password
+  8. Keyboard Shortcuts
+  9. Light vs Dark Theme
+
+
+1. ROLES & USERS
+================
+
+Two built-in roles exist:
+
+  ┌────────────────────┬───────────────────────────────────────────────┐
+  │ Role               │ What it can do                               │
+  ├────────────────────┼───────────────────────────────────────────────┤
+  │ admin              │ Everything below + delete all data + restore  │
+  │                    │ backups + add/edit/delete departments        │
+  ├────────────────────┼───────────────────────────────────────────────┤
+  │ user               │ Add / edit / delete employees, change own    │
+  │                    │ password, import/export CSV, create backups  │
+  │                    │ (cannot restore backups or wipe all data)    │
+  └────────────────────┴───────────────────────────────────────────────┘
+
+  More user accounts can be added directly in the SQLite database
+  (e.g. using a third-party tool like DB Browser for SQLite) on the
+  `users` table.  A graphical "User Management" screen is planned for
+  a future release.
+
+
+2. DASHBOARD
+============
+
+  The Dashboard (first screen after login) shows at-a-glance KPIs:
+
+    · Total employees
+    · Active vs Inactive vs On Leave counts
+    · Number of departments
+    · Salary totals, averages, min / max
+    · Per-department breakdown table
+
+  The numbers refresh whenever you switch to the Dashboard tab.  Charts
+  are available on the Analytics screen (see section 5).
+
+
+3. EMPLOYEES
+============
+
+  This is the main day-to-day screen.
+
+  LIST / SEARCH / FILTER
+  ----------------------
+  · Type in the Search box to filter by code, name, email, position, or
+    department.
+  · Use the Department dropdown to restrict to a single department.
+  · Use the Status dropdown (Active / Inactive / On Leave / …) to filter.
+  · Clear filters using the "Reset" button.
+
+  ADD A NEW EMPLOYEE
+  ------------------
+  Click  + Add Employee.  Fields marked with * are required:
+
+    Employee Code   — unique, 2–32 chars (letters, numbers, -, _)
+    Full Name       — up to 100 chars
+    Email           — must be a valid email format
+    Department      — choose from the list (or type a new name to create it)
+    Position        — e.g. "Senior Software Engineer"
+    Salary          — number in your base currency (no $ symbol)
+    Hire Date       — YYYY-MM-DD, DD/MM/YYYY, or MM/DD/YYYY all accepted
+    Status          — Active, Inactive, On Leave, Terminated, Probation
+
+  EDIT / VIEW / DELETE
+  --------------------
+  Highlight any row, then use the buttons above the table:
+    View details  → read-only detail card
+    Edit          → edit form
+    Delete        → permanent removal (asks for confirmation)
+
+  You can also double-click a row to open the View/Edit dialog.
+
+
+4. DEPARTMENTS
+==============
+
+  Departments are seeded with 10 industry-standard presets on first run.
+  You can rename any of them or add your own:
+
+    · Renaming a department updates ALL employees currently in it, so
+      you cannot orphan records.
+    · Deleting a department asks you to reassign its employees to another
+      department first.  If you decline, employees are moved to
+      "Unassigned".
+
+  Only administrators can edit departments.
+
+
+5. ANALYTICS
+============
+
+  Click "Refresh Charts" to build two charts:
+
+    · Department headcount — horizontal bar chart
+    · Average salary per department — vertical bar chart
+
+  Hover over a bar to see its value.  The table below the charts mirrors
+  everything numerically.  Use the "Export Report" button to save the
+  Analytics view as a CSV spreadsheet (useful for board reporting).
+
+  NOTE:
+    Charts are rendered the first time you click "Refresh Charts".  If
+    you switch monitors or DPI scaling, close and re-open the Analytics
+    tab to re-render at the new resolution.
+
+
+6. SETTINGS
+===========
+
+  This screen is split into five cards.
+
+  6a. DATABASE BACKUP & SAFE RECOVERY (all users)
+  -----------------------------------------------
+  Create Database Backup
+      Snapshots the entire SQLite DB to a .db file of your choice.
+      Copy this file to a cloud drive / external HDD for disaster
+      recovery.  Store the file with the same security sensitivity
+      as the employee records it contains.
+
+  Restore from Backup…      (ADMIN ONLY)
+      Replaces the live database with a previously-created backup
+      file.  The system ALWAYS creates a pre-restore auto snapshot of
+      your current database before touching anything, so a bad restore
+      can be rolled back.  The auto snapshot lives in:
+        %LOCALAPPDATA%\EmployeeManagementSystem\backups\
+
+  6b. USER ACCOUNT (all users)
+  ----------------------------
+  Shows the logged-in username + role.
+  Change Password…  — opens a dialog to set a new password for the
+                        currently-logged-in user.  Requires the current
+                        password plus confirmation.
+
+  6c. CSV BULK DATA OPERATIONS (all users)
+  ----------------------------------------
+  Export Employees to CSV
+      Produces a UTF-8 CSV (Excel-friendly) with all records.
+      Formula-trigger characters (=, +, -, @) are neutralised with a
+      leading apostrophe so the file is safe to email / open in Excel.
+
+  Import Employees from CSV
+      Imports a CSV with columns:
+        emp_code, name, email, department, position, salary, hire_date
+        + optional columns: status, id
+      Rows that fail validation are listed in a summary at the end
+      (nothing is partially committed — imports are transactions).
+      Duplicate employee codes are skipped (not overwritten).
+
+  6d. SYSTEM & DATABASE HEALTH (all users, read-only)
+  ---------------------------------------------------
+  Live display of:
+    · Database file path + size on disk
+    · Employee / department / user counts
+    · SQLite engine version
+    · Application log file location
+
+  6e. DANGER ZONE — Delete Complete Data (ADMIN ONLY)
+  ----------------------------------------------------
+  Permanently erases all employee records and resets departments to the
+  factory defaults.  Prompts you to create an OPTIONAL safety backup
+  first — always click "Yes, Create Backup First" unless you are 100%
+  certain you don't need the data.
+
+  Users are preserved across a wipe so you stay logged in as admin.
+
+
+7. CHANGING YOUR PASSWORD
+=========================
+
+  Any user can change their own password at any time:
+
+    Settings → User Account → Change Password…
+
+  You must enter your current password plus the new password twice.
+  Minimum 8 characters.  Weak defaults (password, admin123, …) are
+  rejected.  Administrators who forget their passwords must wipe the
+  database — no backdoor exists.
+
+
+8. KEYBOARD SHORTCUTS
+=====================
+
+  ┌───────────────┬───────────────────────────────────────┐
+  │ Shortcut      │ Action                                │
+  ├───────────────┼───────────────────────────────────────┤
+  │ Ctrl + F      │ Focus search box (Employees screen)   │
+  │ Ctrl + N      │ Add new employee / department        │
+  │ Ctrl + S      │ Save current form (edit dialogs)     │
+  │ Esc           │ Close current dialog                 │
+  │ Ctrl + Q      │ Log out (return to login screen)     │
+  │ Alt + F4      │ Quit application                     │
+  └───────────────┴───────────────────────────────────────┘
+
+
+9. LIGHT vs DARK THEME
+======================
+
+  Two themes are provided (button in the left sidebar footer):
+
+    · Light (default)  — clean high-contrast, best for offices.
+    · Dark             — low eye-strain for after-hours work.
+
+  Theme preference is NOT persisted between launches in v1.0.0; it
+  always defaults to Light.  If you want Dark as default, toggle the
+  button once after login.

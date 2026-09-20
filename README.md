@@ -1,177 +1,103 @@
-# Employee Management System (Python)
-
-A Python-based Employee Management System (EMS) for managing employee records, departments, roles, and basic authentication. This repository contains the backend code and utilities to run, test, and deploy the EMS.
-
-> Purpose: a clean, testable, and extendable foundation to build HR/admin tooling, demos, or small production services.
-
-
-## Highlights
-
-- Manage employees: create, read, update, delete
-- Departments and roles management
-- Search and filter employees
-- Authentication (JWT or session-based — implementation-dependent)
-- Tests and CI-friendly layout
-
-
-## Tech stack (typical)
-
-This project is Python-first. Common stacks you may find in this repo (or can adopt):
-
-- Web framework: FastAPI (recommended) or Flask or Django
-- Database: PostgreSQL (recommended), SQLite for local development
-- ORM / Migrations: SQLAlchemy + Alembic or Django ORM
-- Auth: PyJWT / OAuth2 / Django auth
-- Testing: pytest, pytest-asyncio, HTTPX or requests
-- Containerization: Docker
-
-
-## Requirements
-
-- Python 3.9+ (3.10 or 3.11 recommended)
-- PostgreSQL 12+ for production
-- Docker (optional)
-
-
-## Quick start (recommended workflow)
-
-1. Clone the repository
-
-   git clone https://github.com/hamza4hameed/Employee-Management-System.git
-   cd Employee-Management-System
-
-2. Create and activate a virtual environment
-
-   python -m venv .venv
-   source .venv/bin/activate   # macOS / Linux
-   .venv\Scripts\activate     # Windows (PowerShell)
-
-3. Install dependencies
-
-   pip install -r requirements.txt
-
-   If the repo uses Poetry or Pipenv, run the appropriate install command:
-
-   # Poetry
-   poetry install
-
-   # Pipenv
-   pipenv install --dev
-
-4. Configure environment variables
-
-   Copy the example and update values:
-
-   cp .env.example .env
-   # Edit .env and set DATABASE_URL, SECRET_KEY/JWT_SECRET, and other settings
-
-   Example env variables:
-   - DATABASE_URL=postgresql://user:password@localhost:5432/ems_db
-   - SECRET_KEY=changeme
-   - ENV=development
-   - PORT=8000
-
-5. Run database migrations (if applicable)
-
-   # Alembic
-   alembic upgrade head
-
-   # Django
-   python manage.py migrate
-
-6. Start the application
-
-   # FastAPI (uvicorn)
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-   # Flask
-   export FLASK_APP=app
-   flask run --host=0.0.0.0 --port=8000
-
-   # Django
-   python manage.py runserver 0.0.0.0:8000
-
-7. Open the API docs (FastAPI)
-
-   http://localhost:8000/docs
-
-
-## Docker (optional)
-
-Build and run with Docker:
-
-   docker build -t ems:latest .
-   docker run --env-file .env -p 8000:8000 ems:latest
-
-If this repo includes a docker-compose.yml, use:
-
-   docker-compose up --build
-
-
-## Example API endpoints
-
-Update these to the actual routes implemented in the codebase. The examples below assume a typical RESTful layout.
-
-- POST /api/auth/login — Authenticate and receive a token
-- POST /api/employees — Create an employee
-- GET /api/employees — List employees (supports ?q=, ?department=, ?role=)
-- GET /api/employees/{id} — Get employee details
-- PUT /api/employees/{id} — Update employee
-- DELETE /api/employees/{id} — Delete employee
-- GET /api/departments — List departments
-- POST /api/departments — Create department
-
-
-## Running tests
-
-Run unit and integration tests with pytest:
-
-   pytest
-
-Tips:
-- Use a separate test database (DATABASE_URL pointing to a test DB or SQLite in-memory).
-- Use factories/fixtures to create test data and keep tests isolated.
-
-
-## Linting & formatting
-
-This project recommends using tools like:
-
-- Black for formatting
-- isort for import sorting
-- flake8 or ruff for linting
-
-Run them locally before committing or use pre-commit hooks.
-
-
-## Contributing
-
-Contributions are welcome. Please follow this workflow:
-
-1. Fork the repository
-2. Create a branch: git checkout -b feature/your-feature
-3. Run tests and linters locally
-4. Open a pull request with a clear description and related issue (if any)
-
-Include tests for new behavior and keep changes focused.
-
-
-## Roadmap / Ideas
-
-- Role-based access control (RBAC)
-- Audit logs for record changes
-- CSV import/export for bulk employee updates
-- Admin dashboard (React / Vue / Next.js)
-- Reporting and analytics
-
+# Employee Management System
+
+A local, fully-offline Windows desktop application for managing employee records. Built with **Python 3.10+ / PyQt5 / matplotlib / SQLite**.
+
+## Features
+
+- Employee records: add, edit, delete, search, paginate
+- Department management with cascading renames and safe deletion
+- Live analytics dashboard with salary + headcount charts (matplotlib)
+- Role-based access (admin / user) with PBKDF2 password hashing
+- CSV bulk import / export (with formula-injection protection, flexible date parsing, duplicate skipping)
+- Atomic SQLite online backup & restore with pre-restore safety snapshots
+- First-run administrator password setup (no hardcoded default passwords)
+- Fully offline. No telemetry. No internet connection required.
+- High-DPI aware, light & dark themes
+
+## Source Code Layout
+
+```
+.
+├── run.py                   # Application entry point (careful module ordering!)
+├── app_meta.py              # Single source of truth: version, author, copyright
+├── app_paths.py             # Path resolution for app assets and user data
+├── database.py              # SQLite schema, queries, backup/restore
+├── logger.py                # Rotating file logger, sensitive-field filter
+├── icon_utils.py            # HiDPI icon loader (PNG → QIcon)
+├── csv_utils.py             # CSV import / export / validation
+├── main_window.py           # QMainWindow + sidebar + theme styles
+├── login.py                 # Login + first-run password dialogs
+├── employee_view.py         # Employees list screen
+├── employee_form.py         # Add / Edit employee dialog
+├── employee_detail.py       # Read-only employee detail card
+├── department_view.py       # Departments management screen
+├── department_form.py       # Add / Edit department dialog
+├── analytics_view.py        # Matplotlib charts dashboard
+├── settings_view.py         # Settings: backup, CSV import, user account, danger zone
+├── resources/
+│   └── icons/               # 30+ high-resolution PNG icons used by the UI
+├── sample_data/
+│   ├── employees_sample.csv # 1,000-row demo dataset
+│   └── README.md
+├── docs/                    # User documentation (first-run, guide, backup, troubleshooting)
+└── requirements.txt         # Runtime dependencies
+```
+
+## Quick Start (Developers)
+
+```powershell
+# 1. Install Python 3.10+ from python.org
+#    (Check "Add Python to PATH" during install.)
+
+# 2. Create a virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 3. Install runtime dependencies
+pip install -r requirements.txt
+
+# 4. Run the application
+python -u run.py
+```
+
+On first launch, the application:
+  1. Creates a SQLite database at `%LOCALAPPDATA%\EmployeeManagementSystem\data\employee_system.db`
+  2. Creates an admin account and immediately prompts you to set a password
+  3. Shows the login screen — log in with username `admin` and the password you just chose
+
+## Runtime Paths
+
+The application cleanly separates *application* files from *user* data.
+
+| What | Where (Windows) |
+|---|---|
+| Application assets & icons | `resources/icons/` |
+| SQLite database | `%LOCALAPPDATA%\EmployeeManagementSystem\data\` |
+| Rotating logs | `%LOCALAPPDATA%\EmployeeManagementSystem\logs\` |
+| Auto snapshots + backups | `%LOCALAPPDATA%\EmployeeManagementSystem\backups\` |
+| Sample CSV data | `sample_data/` |
+| Documentation | `docs/` |
+
+Override the user-data root at launch time via:
+
+```powershell
+$env:EMS_USER_DATA_DIR="D:\PortableData\EmployeeMS"
+python run.py
+```
+
+## Security Notes
+
+- Password hashing: PBKDF2-HMAC-SHA256 with 100,000 iterations + 16-byte random salt per user. Legacy SHA-256 hashes are transparently upgraded on first successful login.
+- No secrets are logged — the logger's `_SensitiveFilter` drops any log line containing `password`, `secret`, `token`, `hash`, etc.
+- CSV export neutralises formula triggers (=, +, -, @) for spreadsheet safety.
+- Database restore creates a pre-restore safety snapshot BEFORE touching live data. Even a bad restore can be rolled back.
 
 ## License
 
 This project is provided under the MIT License — replace if you prefer a different license.
 
-
 ## Contact
 
 - Maintainer: Hamza Hameed — https://github.com/hamza4hameed
 - Repo: https://github.com/hamza4hameed/Employee-Management-System
-- Email: hamza4hameed@gmail.com 
+- Email: hamza4hameed@gmail.com

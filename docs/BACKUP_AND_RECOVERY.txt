@@ -1,0 +1,191 @@
+DATA BACKUP AND RECOVERY INSTRUCTIONS
+======================================
+Employee Management System v1.0.0
+
+
+DATA STORAGE OVERVIEW
+=====================
+
+  ALL user data lives at:
+      %LOCALAPPDATA%\EmployeeManagementSystem\
+
+  (Paste the above line into the File Explorer address bar to go there
+  instantly.  %LOCALAPPDATA% is typically:
+     C:\Users\<yourname>\AppData\Local\EmployeeManagementSystem\ )
+
+  Sub-folders:
+
+    data/
+        employee_system.db       ← LIVE database.  Do NOT move/edit this
+                                   file while the application is running.
+        employee_system.db-wal   ← SQLite write-ahead log (auto-managed).
+        employee_system.db-shm   ← SQLite shared-memory (auto-managed).
+
+    logs/
+        app.log                  ← Current application log (up to 2 MB).
+        app.log.1, .2, .3        ← Rotated older logs (kept 3 generations).
+
+    backups/
+        pre_restore_auto_snapshot_YYYYMMDD_HHMMSS.db
+                                 ← Safety snapshots created automatically
+                                   just before every "Restore from Backup"
+                                   operation.  Kept indefinitely;
+                                   manually prune when no longer needed.
+
+
+BACKUP METHODS
+==============
+
+The application supports three backup approaches — pick one (or several).
+
+───────────────────────────────────────────────────────────────────────
+METHOD 1  —  Application-level "Create Database Backup"  (RECOMMENDED)
+───────────────────────────────────────────────────────────────────────
+This is the simplest and safest approach.  It uses SQLite's native
+online-backup API so it produces a consistent snapshot even while other
+users are editing records.
+
+  Steps:
+    1. Open the application → Settings.
+    2. Click  "Create Database Backup".
+    3. In the Save-As dialog, choose a location OUTSIDE of your
+       computer (e.g. OneDrive folder, external USB drive, network share).
+    4. The default filename is:
+         employee_backup_YYYYMMDD_HHMMSS.db
+       — keep this format, it lets you distinguish backups at a glance.
+    5. Click Save.
+
+  A success dialog shows the final file size and its location.
+
+  Recommended cadence:
+    · Daily     : organisations with > 10 edits per day
+    · Weekly    : organisations with light usage
+
+───────────────────────────────────────────────────────────────────────
+METHOD 2  —  Manual file copy
+───────────────────────────────────────────────────────────────────────
+Valid ONLY when the application is fully closed.  NEVER copy
+employee_system.db while the app is running — you may get a partial
+(corrupted) copy.
+
+  Steps:
+    1. Close Employee Management System completely (confirm via Task
+       Manager that EmployeeMS.exe is no longer running).
+    2. In File Explorer go to:
+         %LOCALAPPDATA%\EmployeeManagementSystem\data\
+    3. Copy  employee_system.db  to your backup medium.
+    4. (Optional) Copy the  logs/  folder for audit trail.
+
+───────────────────────────────────────────────────────────────────────
+METHOD 3  —  Automated / scheduled backup via script
+───────────────────────────────────────────────────────────────────────
+For organisations that want a fully-automated nightly backup, create
+a Windows Scheduled Task that runs a small .cmd file:
+
+    backup_employee_db.cmd
+    ─────────────────────────────────────────────────────────────────
+    @echo off
+    setlocal
+    set SRC=%LOCALAPPDATA%\EmployeeManagementSystem\data\employee_system.db
+    set DEST=D:\Backups\EmployeeDB\employee_system_%date:~-4,4%%date:~-7,2%%date:~-10,2%.db
+    if not exist "%SRC%" (
+        echo DB not found. Is the app running?
+        exit /b 1
+    )
+    copy /Y "%SRC%" "%DEST%"
+    echo Backed up to %DEST%
+    ─────────────────────────────────────────────────────────────────
+
+  Then:
+    · Task Scheduler → Create Basic Task
+    · Trigger: Daily, 23:00
+    · Action: Start a program → this .cmd file
+    · Tick "Run whether user is logged on or not" only if the backup
+      destination is not a per-user folder.
+
+  LIMITATION: if someone leaves the application open overnight, the
+  copy will succeed but may be inconsistent.  For guaranteed
+  consistency, use Method 1 or the SQLite CLI `sqlite3.exe` with the
+  `.backup` command inside the scheduled script.
+
+
+RESTORING A BACKUP
+==================
+
+  ┌───────────────────────────────────────────────────────────────────┐
+  │  WARNING — Restoring a backup REPLACES the live database with    │
+  │  the contents of the backup file.  All data created since the    │
+  │  backup will be lost.  ALWAYS restore to a TEST copy first if    │
+  │  you are unsure what the backup contains.                        │
+  └───────────────────────────────────────────────────────────────────┘
+
+  In-app restore (ADMIN only):
+    1. Log in as "admin".
+    2. Settings → Restore from Backup…
+    3. Pick the .db backup file.
+    4. The system validates:
+         · integrity check (PRAGMA integrity_check)
+         · schema check (must contain users, employees, departments)
+       and shows a summary (employee count, department count, file
+       last-modified date).
+    5. A strong warning dialog asks for confirmation.
+    6. Before touching the live database, the system creates a
+       PRE-RESTORE AUTO SNAPSHOT of the current database and stores
+       it in:
+         %LOCALAPPDATA%\EmployeeManagementSystem\backups\
+       This snapshot is your ONLY rollback point after the restore —
+       keep this window open until you've verified the restore was
+       correct.
+    7. After a successful restore, the Statistics view refreshes
+       automatically.  Visit Employees to confirm the expected records
+       are present.
+
+  Manual rollback (if the app can't start):
+    1. Close the app.
+    2. Go to: %LOCALAPPDATA%\EmployeeManagementSystem\data\
+    3. Rename  employee_system.db  to  employee_system.db.BROKEN
+    4. Copy your backup or auto-snapshot file into this folder and
+       rename the copy to  employee_system.db.
+    5. Start the app and log in.  If things look correct, delete the
+       .BROKEN file at your leisure.
+
+
+BACKUP STORAGE BEST PRACTICES
+=============================
+
+  1. Off-machine.  Keep at least one backup copy on a different
+     physical device (external HDD, USB stick, OneDrive/Google Drive
+     sync folder, network share).  "Same-laptop backups" do NOT save
+     you from theft, fire, or drive failure.
+
+  2. Encrypt sensitive backups.  Employee records may contain PII
+     (salaries, email addresses, etc.).  Store .db backup files in a
+     BitLocker-protected drive or wrap them in a 7-Zip AES-256 archive:
+
+         7z a -p employee_backup_20260315.7z employee_backup_20260315.db
+
+  3. Test every 3 months.  A backup you've never restored is a backup
+     you don't actually have.  Pick a quiet afternoon and walk through
+     the restore flow on a test machine.  Document the outcome.
+
+  4. Retention policy.  A good default is:
+       · daily backups for 14 days
+       · weekly backups for 8 weeks
+       · monthly backups for 12 months
+       · yearly backups indefinitely (or per your compliance rules)
+
+  5. Prune logs.  The application keeps at most 4 × 2 MB = 8 MB of
+     logs.  No action is required from the user; if disk space is
+     extremely tight you can delete old app.log.1 / .2 / .3 by hand.
+
+
+DISASTER RECOVERY CHECKLIST
+===========================
+
+  [ ] Identify the backup file to restore.
+  [ ] Copy the %LOCALAPPDATA%\EmployeeManagementSystem\  folder to a
+      safe location FIRST (keeps all auto-snapshots intact).
+  [ ] Log in as admin → Settings → Restore from Backup…
+  [ ] After the restore, spot-check 5 known employees and 2 reports.
+  [ ] Create a new backup immediately after a successful restore so the
+      restored data is itself protected.
