@@ -22,6 +22,26 @@ from icon_utils import get_icon
 from logger import logger
 
 
+def _add_password_toggle(line_edit: QLineEdit) -> None:
+    """Add an inline show/hide toggle action to a password QLineEdit."""
+    from PyQt5.QtWidgets import QAction
+    action = QAction("👁", line_edit)
+    action.setToolTip("Show / hide password")
+
+    def _toggle():
+        if line_edit.echoMode() == QLineEdit.Password:
+            line_edit.setEchoMode(QLineEdit.Normal)
+            action.setText("🔒")
+            action.setToolTip("Hide password")
+        else:
+            line_edit.setEchoMode(QLineEdit.Password)
+            action.setText("👁")
+            action.setToolTip("Show password")
+
+    action.triggered.connect(_toggle)
+    line_edit.addAction(action, QLineEdit.TrailingPosition)
+
+
 class FirstRunPasswordDialog(QDialog):
     """Dialog shown on first launch to set the administrator password."""
 
@@ -148,8 +168,8 @@ class FirstRunPasswordDialog(QDialog):
         self.password_edit.setFixedHeight(36)
         self.password_edit.setPlaceholderText("Minimum 8 characters")
         self.password_edit.setEchoMode(QLineEdit.Password)
-        self.password_edit.setClearButtonEnabled(True)
         self.password_edit.textChanged.connect(self._clear_error)
+        _add_password_toggle(self.password_edit)
 
         confirm_label = QLabel("Confirm Password:", card)
         confirm_label.setProperty("class", "fieldLabel")
@@ -158,9 +178,9 @@ class FirstRunPasswordDialog(QDialog):
         self.confirm_edit.setFixedHeight(36)
         self.confirm_edit.setPlaceholderText("Re-enter password")
         self.confirm_edit.setEchoMode(QLineEdit.Password)
-        self.confirm_edit.setClearButtonEnabled(True)
         self.confirm_edit.textChanged.connect(self._clear_error)
         self.confirm_edit.returnPressed.connect(self._on_set_password)
+        _add_password_toggle(self.confirm_edit)
 
         form.addRow(pass_label, self.password_edit)
         form.addRow(confirm_label, self.confirm_edit)
@@ -433,6 +453,7 @@ class LoginDialog(QDialog):
         self.password_edit.setEchoMode(QLineEdit.Password)
         self.password_edit.textChanged.connect(self._clear_error)
         self.password_edit.returnPressed.connect(self._on_login_clicked)
+        _add_password_toggle(self.password_edit)
 
         form.addRow(user_label, self.username_edit)
         form.addRow(pass_label, self.password_edit)

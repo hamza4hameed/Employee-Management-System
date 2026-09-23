@@ -24,7 +24,9 @@ from PyQt5.QtWidgets import (
 import database
 import csv_utils
 from icon_utils import get_icon
-from logger import logger, get_log_dir
+from logger import logger
+from app_paths import get_backup_dir, get_log_dir
+from login import _add_password_toggle
 
 
 class ChangePasswordDialog(QDialog):
@@ -59,16 +61,19 @@ class ChangePasswordDialog(QDialog):
         self.current_edit.setEchoMode(QLineEdit.Password)
         self.current_edit.setPlaceholderText("Enter current password")
         self.current_edit.setFixedHeight(32)
+        _add_password_toggle(self.current_edit)
 
         self.new_edit = QLineEdit()
         self.new_edit.setEchoMode(QLineEdit.Password)
         self.new_edit.setPlaceholderText("Minimum 8 characters")
         self.new_edit.setFixedHeight(32)
+        _add_password_toggle(self.new_edit)
 
         self.confirm_edit = QLineEdit()
         self.confirm_edit.setEchoMode(QLineEdit.Password)
         self.confirm_edit.setPlaceholderText("Re-enter new password")
         self.confirm_edit.setFixedHeight(32)
+        _add_password_toggle(self.confirm_edit)
 
         form.addRow("Current Password:", self.current_edit)
         form.addRow("New Password:", self.new_edit)
@@ -465,11 +470,12 @@ class SettingsView(QWidget):
     def _on_create_backup(self) -> None:
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         default_name = f"employee_backup_{ts}.db"
+        default_path = os.path.join(get_backup_dir(), default_name)
 
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Save Database Backup",
-            default_name,
+            default_path,
             "SQLite Database (*.db);;All Files (*)",
         )
         if not path:
@@ -511,7 +517,7 @@ class SettingsView(QWidget):
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Select Database Backup to Restore",
-            "",
+            get_backup_dir(),
             "SQLite Databases (*.db *.sqlite *.sqlite3);;All Files (*)",
         )
         if not path:
@@ -710,10 +716,11 @@ class SettingsView(QWidget):
         if clicked == btn_backup:
             ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             default_name = f"employee_pre_delete_backup_{ts}.db"
+            default_path = os.path.join(get_backup_dir(), default_name)
             path, _ = QFileDialog.getSaveFileName(
                 self,
                 "Save Safety Backup Before Deletion",
-                default_name,
+                default_path,
                 "SQLite Database (*.db);;All Files (*)",
             )
             if not path:

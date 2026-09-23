@@ -38,13 +38,13 @@ Troubleshooting steps:
          EmployeeMS.exe 2>&1 | more
      — any early startup error will be printed to this console.
   5. Inspect the application log at:
-       %LOCALAPPDATA%\EmployeeManagementSystem\logs\app.log
+       %LOCALAPPDATA%\Employee Management System\logs\app.log
      If the app cannot even write to this file, it will attempt to
      write a startup error next to the exe as startup_crash_*.log.
   6. If you suspect a corrupted user-data folder, rename
-       %LOCALAPPDATA%\EmployeeManagementSystem\
+       %LOCALAPPDATA%\Employee Management System\
      to
-       %LOCALAPPDATA%\EmployeeManagementSystem.OLD\
+       %LOCALAPPDATA%\Employee Management System.OLD\
      and try launching again.  This gives you a clean slate without
      deleting your old data.
 
@@ -106,7 +106,7 @@ P4 — ADMINISTRATOR PASSWORD LOST
 
   2. Wipe the database (destroys all employee records):
        Close the app.
-       Delete: %LOCALAPPDATA%\EmployeeManagementSystem\data\employee_system.db
+       Delete: %LOCALAPPDATA%\Employee Management System\data\employee_system.db
        On next launch the app will walk you through setting a NEW
        admin password.
 
@@ -209,7 +209,7 @@ P9 — RESTORE FROM BACKUP FAILS / DATABASE IS "CORRUPTED"
        Then restore from new.db.
     3. If nothing else works, perform a manual rollback using the
        pre-restore auto-snapshots kept in:
-         %LOCALAPPDATA%\EmployeeManagementSystem\backups\
+         %LOCALAPPDATA%\Employee Management System\backups\
        (These snapshots are created BEFORE every Restore operation
        so at least one is guaranteed to exist after a failed restore.)
 
@@ -256,7 +256,7 @@ P12 — HOW DO I SEND A BUG REPORT TO TECHNICAL SUPPORT?
 
     1. Screenshot of any error dialog (use Win + Shift + S).
     2. Application log:
-         %LOCALAPPDATA%\EmployeeManagementSystem\logs\app.log
+         %LOCALAPPDATA%\Employee Management System\logs\app.log
        (Include app.log.1 / .2 / .3 too if they exist.)
     3. Windows version: press  Win + R, type  winver, press Enter,
        screenshot the resulting dialog.

@@ -20,7 +20,7 @@ Employee Management System v1.0.0
   FIRST-LAUNCH BEHAVIOUR — the application will silently create these
   folders for storing your data:
 
-    %LOCALAPPDATA%\EmployeeManagementSystem\
+    %LOCALAPPDATA%\Employee Management System\
     ├── data\
     │   └── employee_system.db   ← SQLite database (created empty, first run)
     ├── logs\

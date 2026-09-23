@@ -345,7 +345,7 @@ class EmployeeView(QWidget):
         self._page_info_label.setProperty("class", "cardSubtitle")
         self._page_info_label.setStyleSheet("font-size: 11px;")
 
-        self._first_btn = QPushButton("First")
+        self._first_btn = QPushButton(" ")
         self._first_btn.setIcon(get_icon("first.svg"))
         self._first_btn.setIconSize(QSize(16, 16))
         self._first_btn.setProperty("class", "secondaryButton")
@@ -373,7 +373,7 @@ class EmployeeView(QWidget):
         self._next_btn.setFixedWidth(64)
         self._next_btn.clicked.connect(self._on_next_page)
 
-        self._last_btn = QPushButton("Last")
+        self._last_btn = QPushButton("")
         self._last_btn.setIcon(get_icon("last.svg"))
         self._last_btn.setIconSize(QSize(16, 16))
         self._last_btn.setLayoutDirection(Qt.RightToLeft)

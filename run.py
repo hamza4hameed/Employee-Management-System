@@ -22,7 +22,6 @@ from datetime import datetime
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _APP_ROOT = _HERE
-os.chdir(_HERE)
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
@@ -154,6 +153,21 @@ def _write_log(message: str) -> None:
             f.write("\n")
     except Exception as exc:
         print("Could not write log {}: {}".format(LOG_PATH, exc), file=sys.stderr)
+        try:
+            import tempfile
+            from app_paths import APP_DIR_NAME
+            fallback_dir = os.path.join(tempfile.gettempdir(), APP_DIR_NAME)
+            os.makedirs(fallback_dir, exist_ok=True)
+            fallback_path = os.path.join(fallback_dir, "startup_error.log")
+            with open(fallback_path, "a", encoding="utf-8") as fb:
+                fb.write("\n===== {} =====\n".format(
+                    datetime.now().isoformat(timespec="seconds")
+                ))
+                fb.write(message)
+                fb.write("\n")
+            print("Fallback error log written to {}".format(fallback_path), file=sys.stderr)
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------

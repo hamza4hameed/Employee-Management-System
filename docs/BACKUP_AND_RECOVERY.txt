@@ -7,11 +7,11 @@ DATA STORAGE OVERVIEW
 =====================
 
   ALL user data lives at:
-      %LOCALAPPDATA%\EmployeeManagementSystem\
+      %LOCALAPPDATA%\Employee Management System\
 
   (Paste the above line into the File Explorer address bar to go there
   instantly.  %LOCALAPPDATA% is typically:
-     C:\Users\<yourname>\AppData\Local\EmployeeManagementSystem\ )
+     C:\Users\<yourname>\AppData\Local\Employee Management System\ )
 
   Sub-folders:
 
@@ -72,7 +72,7 @@ employee_system.db while the app is running — you may get a partial
     1. Close Employee Management System completely (confirm via Task
        Manager that EmployeeMS.exe is no longer running).
     2. In File Explorer go to:
-         %LOCALAPPDATA%\EmployeeManagementSystem\data\
+         %LOCALAPPDATA%\Employee Management System\data\
     3. Copy  employee_system.db  to your backup medium.
     4. (Optional) Copy the  logs/  folder for audit trail.
 
@@ -86,7 +86,7 @@ a Windows Scheduled Task that runs a small .cmd file:
     ─────────────────────────────────────────────────────────────────
     @echo off
     setlocal
-    set SRC=%LOCALAPPDATA%\EmployeeManagementSystem\data\employee_system.db
+    set SRC=%LOCALAPPDATA%\Employee Management System\data\employee_system.db
     set DEST=D:\Backups\EmployeeDB\employee_system_%date:~-4,4%%date:~-7,2%%date:~-10,2%.db
     if not exist "%SRC%" (
         echo DB not found. Is the app running?
@@ -132,7 +132,7 @@ RESTORING A BACKUP
     6. Before touching the live database, the system creates a
        PRE-RESTORE AUTO SNAPSHOT of the current database and stores
        it in:
-         %LOCALAPPDATA%\EmployeeManagementSystem\backups\
+         %LOCALAPPDATA%\Employee Management System\backups\
        This snapshot is your ONLY rollback point after the restore —
        keep this window open until you've verified the restore was
        correct.
@@ -142,7 +142,7 @@ RESTORING A BACKUP
 
   Manual rollback (if the app can't start):
     1. Close the app.
-    2. Go to: %LOCALAPPDATA%\EmployeeManagementSystem\data\
+    2. Go to: %LOCALAPPDATA%\Employee Management System\data\
     3. Rename  employee_system.db  to  employee_system.db.BROKEN
     4. Copy your backup or auto-snapshot file into this folder and
        rename the copy to  employee_system.db.
@@ -183,7 +183,7 @@ DISASTER RECOVERY CHECKLIST
 ===========================
 
   [ ] Identify the backup file to restore.
-  [ ] Copy the %LOCALAPPDATA%\EmployeeManagementSystem\  folder to a
+  [ ] Copy the %LOCALAPPDATA%\Employee Management System\  folder to a
       safe location FIRST (keeps all auto-snapshots intact).
   [ ] Log in as admin → Settings → Restore from Backup…
   [ ] After the restore, spot-check 5 known employees and 2 reports.

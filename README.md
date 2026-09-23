@@ -61,7 +61,7 @@ python -u run.py
 ```
 
 On first launch, the application:
-  1. Creates a SQLite database at `%LOCALAPPDATA%\EmployeeManagementSystem\data\employee_system.db`
+  1. Creates a SQLite database at `%LOCALAPPDATA%\Employee Management System\data\employee_system.db`
   2. Creates an admin account and immediately prompts you to set a password
   3. Shows the login screen — log in with username `admin` and the password you just chose
 
@@ -72,9 +72,9 @@ The application cleanly separates *application* files from *user* data.
 | What | Where (Windows) |
 |---|---|
 | Application assets & icons | `resources/icons/` |
-| SQLite database | `%LOCALAPPDATA%\EmployeeManagementSystem\data\` |
-| Rotating logs | `%LOCALAPPDATA%\EmployeeManagementSystem\logs\` |
-| Auto snapshots + backups | `%LOCALAPPDATA%\EmployeeManagementSystem\backups\` |
+| SQLite database | `%LOCALAPPDATA%\Employee Management System\data\` |
+| Rotating logs | `%LOCALAPPDATA%\Employee Management System\logs\` |
+| Auto snapshots + backups | `%LOCALAPPDATA%\Employee Management System\backups\` |
 | Sample CSV data | `sample_data/` |
 | Documentation | `docs/` |
 

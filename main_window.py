@@ -13,7 +13,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "windows")
 os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QFont, QIcon, QPixmap
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -30,7 +30,6 @@ from PyQt5.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
-    QSplitter,
     QComboBox,
     QDialog,
 )
@@ -80,10 +79,10 @@ QPushButton.navButton {
     background-color: transparent;
     color: #cbd5e1;
     border: none;
-    border-left: 4px solid transparent;
+    border-left: 3px solid transparent;
     text-align: left;
-    padding: 11px 20px;
-    font-size: 13px;
+    padding: 8px 16px;
+    font-size: 12px;
     font-weight: 500;
     border-radius: 0px;
 }
@@ -96,7 +95,7 @@ QPushButton.navButton:hover {
 QPushButton.navButton:checked {
     background-color: #1d4ed8;
     color: #ffffff;
-    border-left: 4px solid #60a5fa;
+    border-left: 3px solid #60a5fa;
     font-weight: 600;
 }
 
@@ -1427,6 +1426,16 @@ class MainWindow(QMainWindow):
         self.resize(1180, 760)
         self.setMinimumSize(QSize(980, 620))
 
+        # Set application icon from main_logo.png
+        from app_paths import get_icons_dir
+        logo_path = os.path.join(get_icons_dir(), "main_logo.png")
+        if os.path.isfile(logo_path):
+            app_icon = QIcon(logo_path)
+            self.setWindowIcon(app_icon)
+            app = QApplication.instance()
+            if app is not None:
+                app.setWindowIcon(app_icon)
+
         root = QWidget(self)
         root.setObjectName("rootWidget")
         self.setCentralWidget(root)
@@ -1435,38 +1444,18 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # Resizable sidebar + content area via QSplitter
-        self._splitter = QSplitter(Qt.Horizontal)
-        self._splitter.setObjectName("mainSplitter")
-        self._splitter.setHandleWidth(4)
-        self._splitter.setChildrenCollapsible(False)
-
         print("[main_window._build_ui] 2/5 _build_sidebar() ...")
         sys.stdout.flush()
         sidebar = self._build_sidebar()
-        # Remove the fixed width so QSplitter can resize it
-        sidebar.setMinimumWidth(180)
-        sidebar.setMaximumWidth(400)
-        sidebar.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        sidebar.setFixedWidth(220)
 
         print("[main_window._build_ui] 3/5 _build_content_area() ...")
         sys.stdout.flush()
         content = self._build_content_area()
         content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self._splitter.addWidget(sidebar)
-        self._splitter.addWidget(content)
-        self._splitter.setStretchFactor(0, 0)  # sidebar: don't stretch
-        self._splitter.setStretchFactor(1, 1)  # content: stretch
-        self._splitter.setSizes([240, 940])     # initial split
-
-        # Style the splitter handle to be subtle
-        self._splitter.setStyleSheet(
-            "QSplitter::handle { background-color: transparent; }"
-            "QSplitter::handle:hover { background-color: rgba(59,130,246,0.35); }"
-        )
-
-        root_layout.addWidget(self._splitter)
+        root_layout.addWidget(sidebar)
+        root_layout.addWidget(content, 1)
 
         print("[main_window._build_ui] 4/5 statusBar() ...")
         sys.stdout.flush()
@@ -1519,11 +1508,11 @@ class MainWindow(QMainWindow):
         for idx, (key, label, icon_name) in enumerate(nav_items):
             btn = QPushButton(label)
             btn.setIcon(get_icon(icon_name))
-            btn.setIconSize(QSize(20, 20))
+            btn.setIconSize(QSize(18, 18))
             btn.setProperty("class", "navButton")
             btn.setCheckable(True)
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setMinimumHeight(40)
+            btn.setMinimumHeight(34)
             if idx == 0:
                 btn.setChecked(True)
             btn.clicked.connect(lambda _=False, k=key: self._navigate_to(k))
@@ -1535,7 +1524,7 @@ class MainWindow(QMainWindow):
 
         about_btn = QPushButton("About")
         about_btn.setIcon(get_icon("about.png"))
-        about_btn.setIconSize(QSize(18, 18))
+        about_btn.setIconSize(QSize(16, 16))
         about_btn.setProperty("class", "navButton")
         about_btn.setCursor(Qt.PointingHandCursor)
         about_btn.clicked.connect(self._on_about)
@@ -1543,7 +1532,7 @@ class MainWindow(QMainWindow):
 
         logout = QPushButton("Log Out")
         logout.setIcon(get_icon("logout.png"))
-        logout.setIconSize(QSize(20, 20))
+        logout.setIconSize(QSize(18, 18))
         logout.setProperty("class", "navButton")
         logout.setCursor(Qt.PointingHandCursor)
         logout.clicked.connect(self._on_logout)

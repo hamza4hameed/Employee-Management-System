@@ -141,7 +141,7 @@ Two built-in roles exist:
       file.  The system ALWAYS creates a pre-restore auto snapshot of
       your current database before touching anything, so a bad restore
       can be rolled back.  The auto snapshot lives in:
-        %LOCALAPPDATA%\EmployeeManagementSystem\backups\
+        %LOCALAPPDATA%\Employee Management System\backups\
 
   6b. USER ACCOUNT (all users)
   ----------------------------
